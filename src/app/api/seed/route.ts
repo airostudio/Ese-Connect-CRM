@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import bcrypt from "bcryptjs";
@@ -6,19 +6,19 @@ import bcrypt from "bcryptjs";
 // Use untyped client for seed operations to avoid strict generic inference issues
 const supabase = db;
 
-export async function POST() {
-  // Block in production always
-  if (process.env.NODE_ENV === "production") {
-    return NextResponse.json({ error: "Forbidden in production" }, { status: 403 });
-  }
+export async function POST(req: NextRequest) {
+  // In production, require either a SEED_SECRET token (for first-run setup)
+  // or an authenticated admin session (for re-seeding).
+  const seedSecret = process.env.SEED_SECRET;
+  const authHeader = req.headers.get("x-seed-secret");
+  const hasValidSecret = seedSecret && authHeader === seedSecret;
 
-  // Allow seeding when the DB is empty (first-run / no users yet).
-  // Once users exist, require an admin session to reseed.
+  // Check if DB is empty — first-run is always allowed (nothing to protect yet)
   const { count: userCount } = await supabase
     .from("users")
     .select("*", { count: "exact", head: true });
 
-  if ((userCount ?? 0) > 0) {
+  if ((userCount ?? 0) > 0 && !hasValidSecret) {
     const session = await auth();
     const role = (session?.user as { role?: string } | undefined)?.role;
     if (!session || role !== "admin") {
