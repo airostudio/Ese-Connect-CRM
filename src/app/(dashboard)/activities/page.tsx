@@ -88,7 +88,8 @@ export default function ActivitiesPage() {
 
   // Group by date
   const grouped = activities.reduce<Record<string, Activity[]>>((acc, activity) => {
-    const date = new Date(activity.createdAt).toDateString();
+    const d = activity.createdAt ? new Date(activity.createdAt) : null;
+    const date = d && !isNaN(d.getTime()) ? d.toDateString() : "Unknown date";
     if (!acc[date]) acc[date] = [];
     acc[date].push(activity);
     return acc;
