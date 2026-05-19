@@ -18,11 +18,14 @@ async function getDashboardStats() {
     }),
   ]);
 
-  const totalRevenue = totalDealsForRevenue
+  type DealSummary = { value: number; probability: number; stage: string };
+  const deals: DealSummary[] = totalDealsForRevenue;
+
+  const totalRevenue = deals
     .filter((d) => d.stage === "closed won")
     .reduce((sum, d) => sum + d.value, 0);
 
-  const forecastedRevenue = totalDealsForRevenue
+  const forecastedRevenue = deals
     .filter((d) => !["closed won", "closed lost"].includes(d.stage))
     .reduce((sum, d) => sum + (d.value * d.probability) / 100, 0);
 
