@@ -1,13 +1,11 @@
 "use client";
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { Cloud, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import toast from "react-hot-toast";
 import Link from "next/link";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("admin@eseconnect.com");
   const [password, setPassword] = useState("password123");
   const [showPass, setShowPass] = useState(false);
@@ -26,8 +24,7 @@ export default function LoginPage() {
         toast.error("Invalid credentials. Please try again.");
       } else {
         toast.success("Welcome back!");
-        router.refresh();
-        router.push("/dashboard");
+        window.location.href = "/dashboard";
       }
     } catch {
       toast.error("Something went wrong.");
