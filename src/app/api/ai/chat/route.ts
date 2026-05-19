@@ -30,11 +30,13 @@ export async function POST(req: NextRequest) {
     }));
 
     // Get CRM context
-    const [contacts, deals, tasks] = await Promise.all([
+    type DealSnippet = { stage: string; value: number; title: string };
+    const [contacts, rawDeals, tasks] = await Promise.all([
       prisma.contact.count(),
       prisma.deal.findMany({ select: { stage: true, value: true, title: true }, take: 10 }),
       prisma.task.findMany({ where: { status: { not: "completed" } }, take: 5 }),
     ]);
+    const deals: DealSnippet[] = rawDeals;
 
     const crmContext = `
 You are an AI assistant for Ese Connect CRM. Here is the current CRM data summary:
