@@ -13,11 +13,19 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = "primary", size = "md", loading, icon, children, disabled, ...props }, ref) => {
     const variants = {
-      primary: "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm",
-      secondary: "bg-violet-600 text-white hover:bg-violet-700 shadow-sm",
-      outline: "border border-slate-300 text-slate-700 hover:bg-slate-50 bg-white",
-      ghost: "text-slate-700 hover:bg-slate-100",
-      danger: "bg-rose-600 text-white hover:bg-rose-700 shadow-sm",
+      primary: "text-white shadow-sm hover:opacity-90",
+      secondary: "text-white shadow-sm hover:opacity-90",
+      outline: "bg-white hover:bg-[#F3F3F3]",
+      ghost: "hover:bg-[#F3F3F3]",
+      danger: "text-white shadow-sm hover:opacity-90",
+    };
+
+    const variantStyles: Record<string, React.CSSProperties> = {
+      primary: { backgroundColor: "#0176D3", color: "white" },
+      secondary: { backgroundColor: "#032D60", color: "white" },
+      outline: { border: "1px solid #DDDBDA", color: "#181818" },
+      ghost: { color: "#181818" },
+      danger: { backgroundColor: "#EA001E", color: "white" },
     };
 
     const sizes = {
@@ -30,11 +38,12 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         className={cn(
-          "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed",
+          "inline-flex items-center justify-center gap-2 rounded font-medium transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed",
           variants[variant],
           sizes[size],
           className
         )}
+        style={{ ...variantStyles[variant], ...(props.style || {}) }}
         disabled={disabled || loading}
         {...props}
       >
