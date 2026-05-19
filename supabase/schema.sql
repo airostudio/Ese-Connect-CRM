@@ -1,5 +1,9 @@
--- Run this in your Supabase SQL Editor to set up the CRM schema
+-- ============================================================
+-- Ese Connect CRM — Supabase Schema
+-- Run this in your Supabase SQL Editor (Dashboard → SQL Editor)
+-- ============================================================
 
+-- Users
 create table if not exists users (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -9,6 +13,7 @@ create table if not exists users (
   created_at timestamptz default now()
 );
 
+-- Companies
 create table if not exists companies (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -22,6 +27,7 @@ create table if not exists companies (
   updated_at timestamptz default now()
 );
 
+-- Contacts
 create table if not exists contacts (
   id uuid primary key default gen_random_uuid(),
   first_name text not null,
@@ -40,6 +46,7 @@ create table if not exists contacts (
   updated_at timestamptz default now()
 );
 
+-- Deals
 create table if not exists deals (
   id uuid primary key default gen_random_uuid(),
   title text not null,
@@ -57,6 +64,7 @@ create table if not exists deals (
   updated_at timestamptz default now()
 );
 
+-- Tasks
 create table if not exists tasks (
   id uuid primary key default gen_random_uuid(),
   title text not null,
@@ -70,6 +78,7 @@ create table if not exists tasks (
   created_at timestamptz default now()
 );
 
+-- Activities
 create table if not exists activities (
   id uuid primary key default gen_random_uuid(),
   type text not null,
@@ -82,6 +91,7 @@ create table if not exists activities (
   created_at timestamptz default now()
 );
 
+-- Notes
 create table if not exists notes (
   id uuid primary key default gen_random_uuid(),
   content text not null,
@@ -92,6 +102,7 @@ create table if not exists notes (
   created_at timestamptz default now()
 );
 
+-- Email Templates
 create table if not exists email_templates (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -101,6 +112,7 @@ create table if not exists email_templates (
   created_at timestamptz default now()
 );
 
+-- Pipelines
 create table if not exists pipelines (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -108,3 +120,44 @@ create table if not exists pipelines (
   is_default boolean not null default false,
   created_at timestamptz default now()
 );
+
+-- ============================================================
+-- Disable Row Level Security on all tables
+-- The app uses the service role key server-side (bypasses RLS),
+-- but disabling it here avoids surprises if the anon key is
+-- ever used accidentally.
+-- ============================================================
+alter table users disable row level security;
+alter table companies disable row level security;
+alter table contacts disable row level security;
+alter table deals disable row level security;
+alter table tasks disable row level security;
+alter table activities disable row level security;
+alter table notes disable row level security;
+alter table email_templates disable row level security;
+alter table pipelines disable row level security;
+
+-- ============================================================
+-- Indexes for common query patterns
+-- ============================================================
+create index if not exists idx_contacts_owner_id on contacts(owner_id);
+create index if not exists idx_contacts_company_id on contacts(company_id);
+create index if not exists idx_contacts_status on contacts(status);
+create index if not exists idx_contacts_created_at on contacts(created_at desc);
+
+create index if not exists idx_deals_owner_id on deals(owner_id);
+create index if not exists idx_deals_contact_id on deals(contact_id);
+create index if not exists idx_deals_company_id on deals(company_id);
+create index if not exists idx_deals_stage on deals(stage);
+create index if not exists idx_deals_created_at on deals(created_at desc);
+
+create index if not exists idx_tasks_assignee_id on tasks(assignee_id);
+create index if not exists idx_tasks_status on tasks(status);
+create index if not exists idx_tasks_due_date on tasks(due_date);
+
+create index if not exists idx_activities_contact_id on activities(contact_id);
+create index if not exists idx_activities_deal_id on activities(deal_id);
+create index if not exists idx_activities_created_at on activities(created_at desc);
+
+create index if not exists idx_notes_contact_id on notes(contact_id);
+create index if not exists idx_notes_deal_id on notes(deal_id);

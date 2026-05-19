@@ -7,14 +7,23 @@ import bcrypt from "bcryptjs";
 const supabase = db;
 
 export async function POST() {
-  // Only admin users may reseed; also block this route entirely in production
+  // Block in production always
   if (process.env.NODE_ENV === "production") {
     return NextResponse.json({ error: "Forbidden in production" }, { status: 403 });
   }
-  const session = await auth();
-  const role = (session?.user as { role?: string } | undefined)?.role;
-  if (!session || role !== "admin") {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+
+  // Allow seeding when the DB is empty (first-run / no users yet).
+  // Once users exist, require an admin session to reseed.
+  const { count: userCount } = await supabase
+    .from("users")
+    .select("*", { count: "exact", head: true });
+
+  if ((userCount ?? 0) > 0) {
+    const session = await auth();
+    const role = (session?.user as { role?: string } | undefined)?.role;
+    if (!session || role !== "admin") {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    }
   }
   try {
     // Clear existing data (Supabase requires a filter — use neq on id with a dummy UUID)
