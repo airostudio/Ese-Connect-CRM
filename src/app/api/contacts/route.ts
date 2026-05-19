@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 import { contactSchema } from "@/lib/validations";
 
 export async function GET(req: NextRequest) {
@@ -12,31 +12,32 @@ export async function GET(req: NextRequest) {
   const status = searchParams.get("status") || "";
   const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "50"), 1), 200);
   const page = Math.max(parseInt(searchParams.get("page") || "1"), 1);
-  const skip = (page - 1) * limit;
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
 
-  const where: Record<string, unknown> = {};
+  let query = supabase
+    .from("contacts")
+    .select("*, owner:users!owner_id(id, name)", { count: "exact" })
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
   if (search) {
-    where.OR = [
-      { firstName: { contains: search } },
-      { lastName: { contains: search } },
-      { email: { contains: search } },
-      { company: { contains: search } },
-    ];
+    query = query.or(
+      `first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%,company.ilike.%${search}%`
+    );
   }
-  if (status) where.status = status;
+  if (status) {
+    query = query.eq("status", status);
+  }
 
-  const [contacts, total] = await Promise.all([
-    prisma.contact.findMany({
-      where,
-      include: { owner: { select: { id: true, name: true } } },
-      orderBy: { createdAt: "desc" },
-      take: limit,
-      skip,
-    }),
-    prisma.contact.count({ where }),
-  ]);
+  const { data: contacts, error, count } = await query;
 
-  return NextResponse.json({ contacts, total, page, limit });
+  if (error) {
+    console.error("Get contacts error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+
+  return NextResponse.json({ contacts: contacts ?? [], total: count ?? 0, page, limit });
 }
 
 export async function POST(req: NextRequest) {
@@ -49,14 +50,25 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
     }
-    const { tags, ...rest } = parsed.data;
-    const contact = await prisma.contact.create({
-      data: {
+    const { tags, firstName, lastName, leadScore, companyId, ownerId, ...rest } = parsed.data;
+    const { data: contact, error } = await supabase
+      .from("contacts")
+      .insert({
         ...rest,
+        first_name: firstName,
+        last_name: lastName,
+        lead_score: leadScore,
+        company_id: companyId ?? null,
+        owner_id: ownerId ?? session.user?.id ?? null,
         tags: JSON.stringify(tags || []),
-        ownerId: session.user?.id,
-      },
-    });
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Create contact error:", error);
+      return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    }
     return NextResponse.json({ contact }, { status: 201 });
   } catch (error) {
     console.error("Create contact error:", error);
