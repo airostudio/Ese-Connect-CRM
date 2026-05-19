@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
+import { auth } from "@/lib/auth";
+import { NextResponse } from "next/server";
 
 const protectedPaths = [
   "/dashboard",
@@ -17,15 +17,10 @@ const protectedPaths = [
 
 const authPaths = ["/login", "/register"];
 
-export async function proxy(req: NextRequest) {
+export const proxy = auth((req) => {
   const { pathname } = req.nextUrl;
+  const isAuthenticated = !!req.auth;
 
-  const token = await getToken({
-    req,
-    secret: process.env.NEXTAUTH_SECRET,
-  });
-
-  const isAuthenticated = !!token;
   const isProtected = protectedPaths.some((path) => pathname.startsWith(path));
   const isAuthPage = authPaths.some((path) => pathname.startsWith(path));
 
@@ -38,7 +33,7 @@ export async function proxy(req: NextRequest) {
   }
 
   return NextResponse.next();
-}
+});
 
 export const config = {
   matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
