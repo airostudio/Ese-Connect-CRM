@@ -2,16 +2,26 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+type DealRow = { stage: string; value: number; probability: number; createdAt: Date };
+type ContactRow = { status: string; leadScore: number; createdAt: Date };
+type TaskRow = { status: string; priority: string };
+type ActivityRow = { type: string; createdAt: Date };
+
 export async function GET() {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const [deals, contacts, tasks, activities] = await Promise.all([
+  const [rawDeals, rawContacts, rawTasks, rawActivities] = await Promise.all([
     prisma.deal.findMany({ select: { stage: true, value: true, probability: true, createdAt: true } }),
     prisma.contact.findMany({ select: { status: true, leadScore: true, createdAt: true } }),
     prisma.task.findMany({ select: { status: true, priority: true } }),
     prisma.activity.findMany({ select: { type: true, createdAt: true }, orderBy: { createdAt: "desc" }, take: 100 }),
   ]);
+
+  const deals: DealRow[] = rawDeals;
+  const contacts: ContactRow[] = rawContacts;
+  const tasks: TaskRow[] = rawTasks;
+  const activities: ActivityRow[] = rawActivities;
 
   // Pipeline stats
   const pipelineStages = ["lead", "qualified", "proposal", "negotiation", "closed won", "closed lost"];
@@ -38,7 +48,9 @@ export async function GET() {
     monthlyRevenue.push({
       month,
       revenue: monthDeals.filter((d) => d.stage === "closed won").reduce((s, d) => s + d.value, 0),
-      pipeline: monthDeals.filter((d) => !["closed won", "closed lost"].includes(d.stage)).reduce((s, d) => s + d.value, 0),
+      pipeline: monthDeals
+        .filter((d) => !["closed won", "closed lost"].includes(d.stage))
+        .reduce((s, d) => s + d.value, 0),
     });
   }
 
@@ -49,7 +61,7 @@ export async function GET() {
     count: activities.filter((a) => a.type === type).length,
   }));
 
-  // Lead scores distribution
+  // Lead score distribution
   const scoreRanges = [
     { range: "0-20", count: contacts.filter((c) => c.leadScore <= 20).length },
     { range: "21-40", count: contacts.filter((c) => c.leadScore > 20 && c.leadScore <= 40).length },
