@@ -1,0 +1,31 @@
+"use client";
+import { cn, getInitials, generateAvatarColor } from "@/lib/utils";
+
+interface AvatarProps {
+  name: string;
+  size?: "xs" | "sm" | "md" | "lg" | "xl";
+  className?: string;
+}
+
+export function Avatar({ name, size = "md", className }: AvatarProps) {
+  const sizes = {
+    xs: "h-6 w-6 text-xs",
+    sm: "h-8 w-8 text-xs",
+    md: "h-10 w-10 text-sm",
+    lg: "h-12 w-12 text-base",
+    xl: "h-16 w-16 text-xl",
+  };
+
+  return (
+    <div
+      className={cn(
+        "rounded-full flex items-center justify-center font-semibold text-white flex-shrink-0",
+        sizes[size],
+        generateAvatarColor(name),
+        className
+      )}
+    >
+      {getInitials(name)}
+    </div>
+  );
+}

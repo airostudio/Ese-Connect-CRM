@@ -1,13 +1,165 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
 }
 
 datasource db {
   provider = "sqlite"
+}
+
+model User {
+  id         String   @id @default(cuid())
+  name       String
+  email      String   @unique
+  password   String
+  role       String   @default("agent")
+  avatar     String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  contacts   Contact[]
+  deals      Deal[]
+  tasks      Task[]
+  activities Activity[]
+  notes      Note[]
+}
+
+model Contact {
+  id           String   @id @default(cuid())
+  firstName    String
+  lastName     String
+  email        String?
+  phone        String?
+  title        String?
+  company      String?
+  status       String   @default("lead")
+  leadScore    Int      @default(0)
+  tags         String   @default("[]")
+  address      String?
+  socialLinks  String   @default("{}")
+  customFields String   @default("{}")
+  ownerId      String?
+  companyId    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  owner       User?      @relation(fields: [ownerId], references: [id])
+  companyRel  Company?   @relation(fields: [companyId], references: [id])
+  deals       Deal[]
+  tasks       Task[]
+  activities  Activity[]
+  notes       Note[]
+}
+
+model Company {
+  id          String   @id @default(cuid())
+  name        String
+  website     String?
+  industry    String?
+  size        String?
+  revenue     Float?
+  description String?
+  address     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  contacts   Contact[]
+  deals      Deal[]
+  activities Activity[]
+  notes      Note[]
+}
+
+model Deal {
+  id             String    @id @default(cuid())
+  title          String
+  value          Float     @default(0)
+  stage          String    @default("lead")
+  probability    Int       @default(10)
+  closeDate      DateTime?
+  contactId      String?
+  companyId      String?
+  ownerId        String?
+  pipeline       String    @default("default")
+  healthScore    Int       @default(50)
+  lastActivityAt DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  contact    Contact?   @relation(fields: [contactId], references: [id])
+  company    Company?   @relation(fields: [companyId], references: [id])
+  owner      User?      @relation(fields: [ownerId], references: [id])
+  tasks      Task[]
+  activities Activity[]
+  notes      Note[]
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  dueDate     DateTime?
+  priority    String    @default("medium")
+  status      String    @default("pending")
+  assigneeId  String?
+  contactId   String?
+  dealId      String?
+  recurring   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  assignee  User?    @relation(fields: [assigneeId], references: [id])
+  contact   Contact? @relation(fields: [contactId], references: [id])
+  deal      Deal?    @relation(fields: [dealId], references: [id])
+}
+
+model Activity {
+  id          String   @id @default(cuid())
+  type        String
+  title       String
+  description String?
+  userId      String?
+  contactId   String?
+  dealId      String?
+  companyId   String?
+  createdAt   DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id])
+  contact   Contact? @relation(fields: [contactId], references: [id])
+  deal      Deal?    @relation(fields: [dealId], references: [id])
+  company   Company? @relation(fields: [companyId], references: [id])
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  content   String
+  userId    String?
+  contactId String?
+  dealId    String?
+  companyId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User?    @relation(fields: [userId], references: [id])
+  contact   Contact? @relation(fields: [contactId], references: [id])
+  deal      Deal?    @relation(fields: [dealId], references: [id])
+  company   Company? @relation(fields: [companyId], references: [id])
+}
+
+model EmailTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  subject   String
+  body      String
+  category  String   @default("general")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Pipeline {
+  id        String   @id @default(cuid())
+  name      String
+  stages    String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
