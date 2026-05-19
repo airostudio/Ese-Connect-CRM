@@ -5,9 +5,9 @@
 
 -- Users (passwords are bcrypt of "password123")
 insert into users (id, name, email, password, role) values
-  ('00000001-0000-0000-0000-000000000001', 'Alex Admin',    'admin@eseconnect.com',   '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4tbBNfisIu', 'admin'),
-  ('00000001-0000-0000-0000-000000000002', 'Maria Manager', 'manager@eseconnect.com', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4tbBNfisIu', 'manager'),
-  ('00000001-0000-0000-0000-000000000003', 'Sam Agent',     'agent@eseconnect.com',   '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4tbBNfisIu', 'agent')
+  ('00000001-0000-0000-0000-000000000001', 'Alex Admin',    'admin@eseconnect.com',   '$2b$12$3WajEG35Tbn3WGSdw7P8veKFsDPqptLVoK4.JtrLQPs6/JW9DtF1m', 'admin'),
+  ('00000001-0000-0000-0000-000000000002', 'Maria Manager', 'manager@eseconnect.com', '$2b$12$3WajEG35Tbn3WGSdw7P8veKFsDPqptLVoK4.JtrLQPs6/JW9DtF1m', 'manager'),
+  ('00000001-0000-0000-0000-000000000003', 'Sam Agent',     'agent@eseconnect.com',   '$2b$12$3WajEG35Tbn3WGSdw7P8veKFsDPqptLVoK4.JtrLQPs6/JW9DtF1m', 'agent')
 on conflict (id) do nothing;
 
 -- Companies
