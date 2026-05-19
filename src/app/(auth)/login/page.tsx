@@ -26,6 +26,7 @@ export default function LoginPage() {
         toast.error("Invalid credentials. Please try again.");
       } else {
         toast.success("Welcome back!");
+        router.refresh();
         router.push("/dashboard");
       }
     } catch {
