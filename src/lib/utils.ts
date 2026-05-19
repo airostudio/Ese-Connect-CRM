@@ -6,6 +6,20 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// Recursively convert snake_case keys to camelCase (for Supabase → frontend)
+export function toCamel(obj: unknown): unknown {
+  if (Array.isArray(obj)) return obj.map(toCamel);
+  if (obj !== null && typeof obj === "object") {
+    return Object.fromEntries(
+      Object.entries(obj as Record<string, unknown>).map(([k, v]) => [
+        k.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase()),
+        toCamel(v),
+      ])
+    );
+  }
+  return obj;
+}
+
 export function formatCurrency(value: number): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",

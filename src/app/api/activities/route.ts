@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
+import { toCamel } from "@/lib/utils";
 import { activitySchema } from "@/lib/validations";
 
 export async function GET(req: NextRequest) {
@@ -32,7 +33,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 
-  return NextResponse.json({ activities: activities ?? [] });
+  return NextResponse.json({ activities: toCamel(activities ?? []) });
 }
 
 export async function POST(req: NextRequest) {

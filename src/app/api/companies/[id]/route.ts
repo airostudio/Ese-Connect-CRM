@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabase, db } from "@/lib/supabase";
 import { companySchema } from "@/lib/validations";
+import { toCamel } from "@/lib/utils";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -42,13 +43,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!company) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   return NextResponse.json({
-    company: {
+    company: toCamel({
       ...(company as object),
       contacts: contacts ?? [],
       deals: deals ?? [],
       activities: activities ?? [],
       notes: notes ?? [],
-    },
+    }),
   });
 }
 
