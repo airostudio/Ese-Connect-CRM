@@ -6,6 +6,20 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// Recursively convert snake_case keys to camelCase (for Supabase → frontend)
+export function toCamel(obj: unknown): unknown {
+  if (Array.isArray(obj)) return obj.map(toCamel);
+  if (obj !== null && typeof obj === "object") {
+    return Object.fromEntries(
+      Object.entries(obj as Record<string, unknown>).map(([k, v]) => [
+        k.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase()),
+        toCamel(v),
+      ])
+    );
+  }
+  return obj;
+}
+
 export function formatCurrency(value: number): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -15,12 +29,26 @@ export function formatCurrency(value: number): string {
   }).format(value);
 }
 
-export function formatDate(date: Date | string): string {
-  return format(new Date(date), "MMM d, yyyy");
+export function formatDate(date: Date | string | null | undefined): string {
+  if (!date) return "—";
+  try {
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "—";
+    return format(d, "MMM d, yyyy");
+  } catch {
+    return "—";
+  }
 }
 
-export function formatRelativeTime(date: Date | string): string {
-  return formatDistanceToNow(new Date(date), { addSuffix: true });
+export function formatRelativeTime(date: Date | string | null | undefined): string {
+  if (!date) return "—";
+  try {
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "—";
+    return formatDistanceToNow(d, { addSuffix: true });
+  } catch {
+    return "—";
+  }
 }
 
 export function getInitials(name: string): string {
@@ -94,13 +122,15 @@ export function generateAvatarColor(name: string): string {
   return colors[index];
 }
 
-export function calculateDaysInStage(lastActivityAt: Date | string): number {
-  const now = new Date();
+export function calculateDaysInStage(lastActivityAt: Date | string | null | undefined): number {
+  if (!lastActivityAt) return 0;
   const last = new Date(lastActivityAt);
-  const diffTime = Math.abs(now.getTime() - last.getTime());
+  if (isNaN(last.getTime())) return 0;
+  const diffTime = Math.abs(new Date().getTime() - last.getTime());
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 }
 
-export function isRottingDeal(lastActivityAt: Date | string, threshold = 14): boolean {
+export function isRottingDeal(lastActivityAt: Date | string | null | undefined, threshold = 14): boolean {
+  if (!lastActivityAt) return false;
   return calculateDaysInStage(lastActivityAt) > threshold;
 }

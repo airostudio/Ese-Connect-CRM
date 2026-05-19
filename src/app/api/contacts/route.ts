@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabase, db } from "@/lib/supabase";
 import { contactSchema } from "@/lib/validations";
+import { toCamel } from "@/lib/utils";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -37,7 +38,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 
-  return NextResponse.json({ contacts: contacts ?? [], total: count ?? 0, page, limit });
+  return NextResponse.json({ contacts: toCamel(contacts ?? []), total: count ?? 0, page, limit });
 }
 
 export async function POST(req: NextRequest) {

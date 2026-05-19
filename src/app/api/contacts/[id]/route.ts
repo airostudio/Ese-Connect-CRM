@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabase, db } from "@/lib/supabase";
 import { contactSchema } from "@/lib/validations";
+import { toCamel } from "@/lib/utils";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -39,14 +40,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   return NextResponse.json({
-    contact: {
+    contact: toCamel({
       ...contact,
       companyRel: contactCompany,
       deals: deals ?? [],
       tasks: tasks ?? [],
       activities: activities ?? [],
       notes: notes ?? [],
-    },
+    }),
   });
 }
 

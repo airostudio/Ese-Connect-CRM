@@ -1,8 +1,21 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: #f3f3f3;
+  --foreground: #181818;
+  --sf-navy: #032D60;
+  --sf-navy-hover: #16325C;
+  --sf-blue: #0176D3;
+  --sf-blue-hover: #014486;
+  --sf-blue-light: #1B96FF;
+  --sf-sky: #D8EDFF;
+  --sf-border: #DDDBDA;
+  --sf-gray: #F3F3F3;
+  --sf-text: #181818;
+  --sf-text-muted: #706E6B;
+  --sf-success: #2E844A;
+  --sf-warning: #F4BC25;
+  --sf-error: #EA001E;
 }
 
 * {
@@ -23,7 +36,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom scrollbar */
+/* Salesforce-style scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -32,14 +45,13 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #DDDBDA;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #B0ADAB;
 }
 
-/* Animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
@@ -49,7 +61,6 @@ body {
   animation: fadeIn 0.2s ease-out;
 }
 
-/* Kanban drag styles */
 .dragging {
   opacity: 0.6;
   cursor: grabbing !important;

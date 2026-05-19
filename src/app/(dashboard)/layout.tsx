@@ -12,7 +12,7 @@ export default async function DashboardLayout({
   if (!session) redirect("/login");
 
   return (
-    <div className="flex h-full bg-slate-50">
+    <div className="flex h-full" style={{ backgroundColor: "#F3F3F3" }}>
       <Sidebar />
       <div className="flex-1 flex flex-col ml-64">
         <Header />
