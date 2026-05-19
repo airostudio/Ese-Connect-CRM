@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabase
     .from("companies")
-    .select("*", { count: "exact" })
+    .select("*, contacts!company_id(count), deals!company_id(count)", { count: "exact" })
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -28,7 +28,20 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 
-  return NextResponse.json({ companies: companies ?? [], total: count ?? 0 });
+  type RawCompany = Record<string, unknown> & {
+    contacts?: { count: number }[];
+    deals?: { count: number }[];
+  };
+
+  const shaped = (companies ?? []).map((c: RawCompany) => ({
+    ...c,
+    _count: {
+      contacts: (c.contacts as { count: number }[])?.[0]?.count ?? 0,
+      deals: (c.deals as { count: number }[])?.[0]?.count ?? 0,
+    },
+  }));
+
+  return NextResponse.json({ companies: shaped, total: count ?? 0 });
 }
 
 export async function POST(req: NextRequest) {
