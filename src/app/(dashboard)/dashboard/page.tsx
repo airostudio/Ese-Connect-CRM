@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 import { KPICard } from "@/components/dashboard/KPICard";
 import { RevenueChart } from "@/components/dashboard/RevenueChart";
 import { PipelineFunnel } from "@/components/dashboard/PipelineFunnel";
@@ -9,17 +9,17 @@ import { AIInsightsPanel } from "@/components/dashboard/AIInsightsPanel";
 import { DollarSign, Users, TrendingUp, Target } from "lucide-react";
 
 async function getDashboardStats() {
-  const [totalContacts, totalDeals, wonDeals, totalDealsForRevenue] = await Promise.all([
-    prisma.contact.count(),
-    prisma.deal.count(),
-    prisma.deal.count({ where: { stage: "closed won" } }),
-    prisma.deal.findMany({
-      select: { value: true, probability: true, stage: true },
-    }),
+  const [contactsRes, dealsCountRes, allDealsRes] = await Promise.all([
+    supabase.from("contacts").select("*", { count: "exact", head: true }),
+    supabase.from("deals").select("*", { count: "exact", head: true }),
+    supabase.from("deals").select("value, probability, stage"),
   ]);
 
+  const totalContacts = contactsRes.count ?? 0;
+  const totalDeals = dealsCountRes.count ?? 0;
+
   type DealSummary = { value: number; probability: number; stage: string };
-  const deals: DealSummary[] = totalDealsForRevenue;
+  const deals: DealSummary[] = allDealsRes.data ?? [];
 
   const totalRevenue = deals
     .filter((d) => d.stage === "closed won")
@@ -29,6 +29,7 @@ async function getDashboardStats() {
     .filter((d) => !["closed won", "closed lost"].includes(d.stage))
     .reduce((sum, d) => sum + (d.value * d.probability) / 100, 0);
 
+  const wonDeals = deals.filter((d) => d.stage === "closed won").length;
   const winRate = totalDeals > 0 ? Math.round((wonDeals / totalDeals) * 100) : 0;
 
   return { totalContacts, totalDeals, totalRevenue, forecastedRevenue, winRate };

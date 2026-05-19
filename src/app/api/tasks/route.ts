@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { supabase, db } from "@/lib/supabase";
 import { taskSchema } from "@/lib/validations";
 
 export async function GET(req: NextRequest) {
@@ -15,32 +15,38 @@ export async function GET(req: NextRequest) {
   const todayEnd = new Date(now);
   todayEnd.setHours(23, 59, 59, 999);
 
-  const where: Record<string, unknown> = {};
+  let query = supabase
+    .from("tasks")
+    .select(
+      "*, assignee:users!assignee_id(id, name), contact:contacts!contact_id(id, first_name, last_name), deal:deals!deal_id(id, title)"
+    )
+    .order("due_date", { ascending: true })
+    .limit(limit);
+
   if (filter === "today") {
-    where.dueDate = { lte: todayEnd };
-    where.status = { not: "completed" };
+    query = query
+      .lte("due_date", todayEnd.toISOString())
+      .neq("status", "completed");
   } else if (filter === "overdue") {
-    where.dueDate = { lt: now };
-    where.status = { not: "completed" };
+    query = query
+      .lt("due_date", now.toISOString())
+      .neq("status", "completed");
   } else if (filter === "upcoming") {
-    where.dueDate = { gt: todayEnd };
-    where.status = { not: "completed" };
+    query = query
+      .gt("due_date", todayEnd.toISOString())
+      .neq("status", "completed");
   } else if (filter === "completed") {
-    where.status = "completed";
+    query = query.eq("status", "completed");
   }
 
-  const tasks = await prisma.task.findMany({
-    where,
-    include: {
-      assignee: { select: { id: true, name: true } },
-      contact: { select: { id: true, firstName: true, lastName: true } },
-      deal: { select: { id: true, title: true } },
-    },
-    orderBy: [{ dueDate: "asc" }, { priority: "desc" }],
-    take: limit,
-  });
+  const { data: tasks, error } = await query;
 
-  return NextResponse.json({ tasks });
+  if (error) {
+    console.error("Get tasks error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+
+  return NextResponse.json({ tasks: tasks ?? [] });
 }
 
 export async function POST(req: NextRequest) {
@@ -53,14 +59,24 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
     }
-    const { dueDate, ...rest } = parsed.data;
-    const task = await prisma.task.create({
-      data: {
+    const { dueDate, assigneeId, contactId, dealId, ...rest } = parsed.data;
+
+    const { data: task, error } = await db
+      .from("tasks")
+      .insert({
         ...rest,
-        dueDate: dueDate ? new Date(dueDate) : undefined,
-        assigneeId: rest.assigneeId || session.user?.id,
-      },
-    });
+        due_date: dueDate ?? null,
+        assignee_id: assigneeId || session.user?.id || null,
+        contact_id: contactId ?? null,
+        deal_id: dealId ?? null,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Create task error:", error);
+      return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    }
     return NextResponse.json({ task }, { status: 201 });
   } catch (error) {
     console.error("Create task error:", error);
@@ -77,9 +93,13 @@ export async function PUT(req: NextRequest) {
   if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
 
   const body = await req.json();
-  const task = await prisma.task.update({
-    where: { id },
-    data: body,
-  });
+  const { data: task, error } = await db
+    .from("tasks")
+    .update(body)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ task });
 }

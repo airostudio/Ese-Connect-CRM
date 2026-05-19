@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/supabase";
 import bcrypt from "bcryptjs";
 import { registerSchema } from "@/lib/validations";
 
@@ -13,16 +13,24 @@ export async function POST(req: NextRequest) {
     // Public registration always creates agent-level accounts.
     // Role elevation requires an authenticated admin action.
     const { name, email, password } = parsed.data;
-    const role = "agent";
-    const existing = await prisma.user.findUnique({ where: { email } });
+
+    const { data: existing } = await db.from("users").select("id").eq("email", email).single();
     if (existing) {
       return NextResponse.json({ error: "Email already registered" }, { status: 409 });
     }
+
     const hashed = await bcrypt.hash(password, 12);
-    const user = await prisma.user.create({
-      data: { name, email, password: hashed, role },
-      select: { id: true, name: true, email: true, role: true },
-    });
+    const { data: user, error } = await db
+      .from("users")
+      .insert({ name, email, password: hashed, role: "agent" })
+      .select("id, name, email, role")
+      .single();
+
+    if (error) {
+      console.error("Register error:", error);
+      return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    }
+
     return NextResponse.json({ user }, { status: 201 });
   } catch (error) {
     console.error("Register error:", error);

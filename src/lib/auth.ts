@@ -36,11 +36,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const { email, password } = parsed.data;
 
-        // Dynamically import prisma and bcrypt only in server context
-        const { prisma } = await import("@/lib/prisma");
+        const { db } = await import("@/lib/supabase");
         const bcrypt = await import("bcryptjs");
 
-        const user = await prisma.user.findUnique({ where: { email } });
+        const { data: user } = await db
+          .from("users")
+          .select("id, name, email, password, role")
+          .eq("email", email)
+          .single();
+
         if (!user) return null;
 
         const isValid = await bcrypt.compare(password, user.password);

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
+import { supabase, db } from "@/lib/supabase";
 import { contactSchema } from "@/lib/validations";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -10,41 +10,24 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params;
 
   const [
-    { data: contact },
-    { data: deals },
-    { data: tasks },
-    { data: activities },
-    { data: notes },
-    { data: companyRel },
+    contactRes,
+    dealsRes,
+    tasksRes,
+    activitiesRes,
+    notesRes,
   ] = await Promise.all([
-    supabase
-      .from("contacts")
-      .select("*, owner:users!owner_id(id, name, email)")
-      .eq("id", id)
-      .single(),
-    supabase
-      .from("deals")
-      .select("*, owner:users!owner_id(name)")
-      .eq("contact_id", id)
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("tasks")
-      .select("*")
-      .eq("contact_id", id)
-      .order("due_date", { ascending: true }),
-    supabase
-      .from("activities")
-      .select("*")
-      .eq("contact_id", id)
-      .order("created_at", { ascending: false })
-      .limit(20),
-    supabase
-      .from("notes")
-      .select("*")
-      .eq("contact_id", id)
-      .order("created_at", { ascending: false }),
-    supabase.from("companies").select("*").eq("id", id).maybeSingle(),
+    db.from("contacts").select("*, owner:users!owner_id(id, name, email)").eq("id", id).single(),
+    db.from("deals").select("*, owner:users!owner_id(name)").eq("contact_id", id).order("created_at", { ascending: false }),
+    supabase.from("tasks").select("*").eq("contact_id", id).order("due_date", { ascending: true }),
+    supabase.from("activities").select("*").eq("contact_id", id).order("created_at", { ascending: false }).limit(20),
+    supabase.from("notes").select("*").eq("contact_id", id).order("created_at", { ascending: false }),
   ]);
+
+  const contact = contactRes.data;
+  const deals = dealsRes.data;
+  const tasks = tasksRes.data;
+  const activities = activitiesRes.data;
+  const notes = notesRes.data;
 
   if (!contact) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -89,7 +72,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (tags !== undefined) updateData.tags = JSON.stringify(tags);
     updateData.updated_at = new Date().toISOString();
 
-    const { data: contact, error } = await supabase
+    const { data: contact, error } = await db
       .from("contacts")
       .update(updateData)
       .eq("id", id)

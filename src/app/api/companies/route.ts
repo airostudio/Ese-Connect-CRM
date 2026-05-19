@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { supabase, db } from "@/lib/supabase";
 import { companySchema } from "@/lib/validations";
 
 export async function GET(req: NextRequest) {
@@ -11,23 +11,24 @@ export async function GET(req: NextRequest) {
   const search = searchParams.get("search") || "";
   const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "50"), 1), 200);
 
-  const where: Record<string, unknown> = search
-    ? { OR: [{ name: { contains: search } }, { industry: { contains: search } }] }
-    : {};
+  let query = supabase
+    .from("companies")
+    .select("*", { count: "exact" })
+    .order("created_at", { ascending: false })
+    .limit(limit);
 
-  const [companies, total] = await Promise.all([
-    prisma.company.findMany({
-      where,
-      include: {
-        _count: { select: { contacts: true, deals: true } },
-      },
-      orderBy: { createdAt: "desc" },
-      take: limit,
-    }),
-    prisma.company.count({ where }),
-  ]);
+  if (search) {
+    query = query.or(`name.ilike.%${search}%,industry.ilike.%${search}%`);
+  }
 
-  return NextResponse.json({ companies, total });
+  const { data: companies, error, count } = await query;
+
+  if (error) {
+    console.error("Get companies error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+
+  return NextResponse.json({ companies: companies ?? [], total: count ?? 0 });
 }
 
 export async function POST(req: NextRequest) {
@@ -40,7 +41,16 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
     }
-    const company = await prisma.company.create({ data: parsed.data });
+    const { data: company, error } = await db
+      .from("companies")
+      .insert(parsed.data)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Create company error:", error);
+      return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    }
     return NextResponse.json({ company }, { status: 201 });
   } catch (error) {
     console.error("Create company error:", error);

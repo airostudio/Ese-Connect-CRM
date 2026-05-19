@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { supabase, db } from "@/lib/supabase";
 import { dealSchema } from "@/lib/validations";
 
 export async function GET(req: NextRequest) {
@@ -13,29 +13,35 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "100"), 1), 500);
   const sort = searchParams.get("sort") || "createdAt";
 
-  const where: Record<string, unknown> = {};
-  if (search) where.title = { contains: search };
-  if (stage) where.stage = stage;
+  let query = supabase
+    .from("deals")
+    .select(
+      "*, contact:contacts!contact_id(id, first_name, last_name), company:companies!company_id(id, name), owner:users!owner_id(id, name)",
+      { count: "exact" }
+    )
+    .limit(limit);
 
-  const orderBy: Record<string, string> = {};
-  if (sort === "value") orderBy.value = "desc";
-  else orderBy.createdAt = "desc";
+  if (sort === "value") {
+    query = query.order("value", { ascending: false });
+  } else {
+    query = query.order("created_at", { ascending: false });
+  }
 
-  const [deals, total] = await Promise.all([
-    prisma.deal.findMany({
-      where,
-      include: {
-        contact: { select: { id: true, firstName: true, lastName: true } },
-        company: { select: { id: true, name: true } },
-        owner: { select: { id: true, name: true } },
-      },
-      orderBy,
-      take: limit,
-    }),
-    prisma.deal.count({ where }),
-  ]);
+  if (search) {
+    query = query.ilike("title", `%${search}%`);
+  }
+  if (stage) {
+    query = query.eq("stage", stage);
+  }
 
-  return NextResponse.json({ deals, total });
+  const { data: deals, error, count } = await query;
+
+  if (error) {
+    console.error("Get deals error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+
+  return NextResponse.json({ deals: deals ?? [], total: count ?? 0 });
 }
 
 export async function POST(req: NextRequest) {
@@ -48,18 +54,24 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
     }
-    const { closeDate, ...rest } = parsed.data;
-    const deal = await prisma.deal.create({
-      data: {
+    const { closeDate, contactId, companyId, ownerId, ...rest } = parsed.data;
+
+    const { data: deal, error } = await db
+      .from("deals")
+      .insert({
         ...rest,
-        closeDate: closeDate ? new Date(closeDate) : undefined,
-        ownerId: session.user?.id,
-      },
-      include: {
-        contact: { select: { id: true, firstName: true, lastName: true } },
-        company: { select: { id: true, name: true } },
-      },
-    });
+        close_date: closeDate ?? null,
+        contact_id: contactId ?? null,
+        company_id: companyId ?? null,
+        owner_id: ownerId ?? session.user?.id ?? null,
+      })
+      .select("*, contact:contacts!contact_id(id, first_name, last_name), company:companies!company_id(id, name)")
+      .single();
+
+    if (error) {
+      console.error("Create deal error:", error);
+      return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    }
     return NextResponse.json({ deal }, { status: 201 });
   } catch (error) {
     console.error("Create deal error:", error);

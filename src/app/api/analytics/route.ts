@@ -1,27 +1,31 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 
-type DealRow = { stage: string; value: number; probability: number; createdAt: Date };
-type ContactRow = { status: string; leadScore: number; createdAt: Date };
+type DealRow = { stage: string; value: number; probability: number; created_at: string };
+type ContactRow = { status: string; lead_score: number; created_at: string };
 type TaskRow = { status: string; priority: string };
-type ActivityRow = { type: string; createdAt: Date };
+type ActivityRow = { type: string; created_at: string };
 
 export async function GET() {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const [rawDeals, rawContacts, rawTasks, rawActivities] = await Promise.all([
-    prisma.deal.findMany({ select: { stage: true, value: true, probability: true, createdAt: true } }),
-    prisma.contact.findMany({ select: { status: true, leadScore: true, createdAt: true } }),
-    prisma.task.findMany({ select: { status: true, priority: true } }),
-    prisma.activity.findMany({ select: { type: true, createdAt: true }, orderBy: { createdAt: "desc" }, take: 100 }),
+  const [rawDealsRes, rawContactsRes, rawTasksRes, rawActivitiesRes] = await Promise.all([
+    supabase.from("deals").select("stage, value, probability, created_at"),
+    supabase.from("contacts").select("status, lead_score, created_at"),
+    supabase.from("tasks").select("status, priority"),
+    supabase
+      .from("activities")
+      .select("type, created_at")
+      .order("created_at", { ascending: false })
+      .limit(100),
   ]);
 
-  const deals: DealRow[] = rawDeals;
-  const contacts: ContactRow[] = rawContacts;
-  const tasks: TaskRow[] = rawTasks;
-  const activities: ActivityRow[] = rawActivities;
+  const deals: DealRow[] = rawDealsRes.data ?? [];
+  const contacts: ContactRow[] = rawContactsRes.data ?? [];
+  const tasks: TaskRow[] = rawTasksRes.data ?? [];
+  const activities: ActivityRow[] = rawActivitiesRes.data ?? [];
 
   // Pipeline stats
   const pipelineStages = ["lead", "qualified", "proposal", "negotiation", "closed won", "closed lost"];
@@ -42,7 +46,7 @@ export async function GET() {
     const month = date.toLocaleString("default", { month: "short" });
     const year = date.getFullYear();
     const monthDeals = deals.filter((d) => {
-      const created = new Date(d.createdAt);
+      const created = new Date(d.created_at);
       return created.getMonth() === date.getMonth() && created.getFullYear() === year;
     });
     monthlyRevenue.push({
@@ -63,11 +67,11 @@ export async function GET() {
 
   // Lead score distribution
   const scoreRanges = [
-    { range: "0-20", count: contacts.filter((c) => c.leadScore <= 20).length },
-    { range: "21-40", count: contacts.filter((c) => c.leadScore > 20 && c.leadScore <= 40).length },
-    { range: "41-60", count: contacts.filter((c) => c.leadScore > 40 && c.leadScore <= 60).length },
-    { range: "61-80", count: contacts.filter((c) => c.leadScore > 60 && c.leadScore <= 80).length },
-    { range: "81-100", count: contacts.filter((c) => c.leadScore > 80).length },
+    { range: "0-20", count: contacts.filter((c) => c.lead_score <= 20).length },
+    { range: "21-40", count: contacts.filter((c) => c.lead_score > 20 && c.lead_score <= 40).length },
+    { range: "41-60", count: contacts.filter((c) => c.lead_score > 40 && c.lead_score <= 60).length },
+    { range: "61-80", count: contacts.filter((c) => c.lead_score > 60 && c.lead_score <= 80).length },
+    { range: "81-100", count: contacts.filter((c) => c.lead_score > 80).length },
   ];
 
   // Win rate

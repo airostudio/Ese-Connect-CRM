@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
+import { supabase, db } from "@/lib/supabase";
 import { contactSchema } from "@/lib/validations";
 
 export async function GET(req: NextRequest) {
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
     }
     const { tags, firstName, lastName, leadScore, companyId, ownerId, ...rest } = parsed.data;
-    const { data: contact, error } = await supabase
+    const { data: contact, error } = await db
       .from("contacts")
       .insert({
         ...rest,

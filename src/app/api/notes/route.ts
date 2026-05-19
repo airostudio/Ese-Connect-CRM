@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/supabase";
 import { noteSchema } from "@/lib/validations";
 
 export async function POST(req: NextRequest) {
@@ -13,9 +13,24 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
     }
-    const note = await prisma.note.create({
-      data: { ...parsed.data, userId: session.user?.id },
-    });
+    const { contactId, dealId, companyId, ...rest } = parsed.data;
+
+    const { data: note, error } = await db
+      .from("notes")
+      .insert({
+        ...rest,
+        user_id: session.user?.id ?? null,
+        contact_id: contactId ?? null,
+        deal_id: dealId ?? null,
+        company_id: companyId ?? null,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Create note error:", error);
+      return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    }
     return NextResponse.json({ note }, { status: 201 });
   } catch (error) {
     console.error("Create note error:", error);

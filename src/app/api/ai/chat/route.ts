@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import Anthropic from "@anthropic-ai/sdk";
-import { prisma } from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 
 if (!process.env.ANTHROPIC_API_KEY) {
   console.warn("ANTHROPIC_API_KEY is not set — AI chat will use fallback responses.");
@@ -31,12 +31,15 @@ export async function POST(req: NextRequest) {
 
     // Get CRM context
     type DealSnippet = { stage: string; value: number; title: string };
-    const [contacts, rawDeals, tasks] = await Promise.all([
-      prisma.contact.count(),
-      prisma.deal.findMany({ select: { stage: true, value: true, title: true }, take: 10 }),
-      prisma.task.findMany({ where: { status: { not: "completed" } }, take: 5 }),
+    const [contactsRes, rawDealsRes, rawTasksRes] = await Promise.all([
+      supabase.from("contacts").select("*", { count: "exact", head: true }),
+      supabase.from("deals").select("title, stage, value").limit(10),
+      supabase.from("tasks").select("id").neq("status", "completed").limit(5),
     ]);
-    const deals: DealSnippet[] = rawDeals;
+
+    const contacts = contactsRes.count ?? 0;
+    const deals: DealSnippet[] = rawDealsRes.data ?? [];
+    const tasks = rawTasksRes.data ?? [];
 
     const crmContext = `
 You are an AI assistant for Ese Connect CRM. Here is the current CRM data summary:
